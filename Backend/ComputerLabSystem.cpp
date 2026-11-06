@@ -133,10 +133,10 @@ void ComputerLabSystem::displayComputerHistory(int compNum) {
 
 void ComputerLabSystem::displayMostProblematicComputers() {
     printSectionHeader("PROBLEMATIC COMPUTERS");
-    const int MAX_COMPUTERS = 100; 
-    int frequencies[MAX_COMPUTERS] = {0}; 
+    const int MAX_COMPUTERS = 100;
+    int frequencies[MAX_COMPUTERS] = {0};
 
-    for (const auto& inc : database) {
+    for (const auto &inc : database) {
         if (inc.compNum >= 0 && inc.compNum < MAX_COMPUTERS) {
             frequencies[inc.compNum]++;
         }
@@ -153,7 +153,8 @@ void ComputerLabSystem::displayMostProblematicComputers() {
             found = true;
         }
     }
-    if (!found) std::cout << "  No incident records found.\n";
+    if (!found)
+        std::cout << "  No incident records found.\n";
 }
 
 void ComputerLabSystem::displayCategorySummary() {
