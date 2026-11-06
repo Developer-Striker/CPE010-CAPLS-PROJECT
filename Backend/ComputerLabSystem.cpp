@@ -178,16 +178,19 @@ void ComputerLabSystem::selectionSort(int criteria) {
         std::cout << "\n  [OK] Records sorted.\n";
         return;
     }
-
     for (std::size_t i = 0; i < database.size() - 1; i++) {
         std::size_t min_idx = i;
         for (std::size_t j = i + 1; j < database.size(); j++) {
             bool shouldSwap = false;
-            if (criteria == 1) shouldSwap = database[j].priority < database[min_idx].priority;
-            else if (criteria == 2) shouldSwap = database[j].date < database[min_idx].date;
-            else if (criteria == 3) shouldSwap = database[j].status < database[min_idx].status;
+            if (criteria == 1)
+                shouldSwap = database[j].priority < database[min_idx].priority;
+            else if (criteria == 2)
+                shouldSwap = database[j].date < database[min_idx].date;
+            else if (criteria == 3)
+                shouldSwap = database[j].status < database[min_idx].status;
 
-            if (shouldSwap) min_idx = j;
+            if (shouldSwap)
+                min_idx = j;
         }
         Incident temp = database[i];
         database[i] = database[min_idx];
