@@ -199,14 +199,17 @@ void ComputerLabSystem::selectionSort(int criteria) {
     std::cout << "\n  [OK] Records sorted.\n";
 }
 
-void ComputerLabSystem::displayAll() {
-    if (database.empty()) {
+void ComputerLabSystem::displayAll()
+{
+    if (database.empty())
+    {
         std::cout << "\n  No incident records found.\n";
         return;
     }
     printSectionHeader("ALL INCIDENT RECORDS");
     printTableHeader();
-    for (const auto& inc : database) {
+    for (const auto &inc : database)
+    {
         printIncident(inc);
     }
 }
