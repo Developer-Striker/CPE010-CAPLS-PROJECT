@@ -31,7 +31,7 @@ public:
     void displayCategorySummary();
     void selectionSort(int criteria);
     void displayAll();
-    void printIncident(const Incident& inc);
+    void printIncident(const Incident &inc);
 };
 
 #endif
