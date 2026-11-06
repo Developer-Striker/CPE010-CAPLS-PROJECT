@@ -160,10 +160,13 @@ void ComputerLabSystem::displayMostProblematicComputers() {
 void ComputerLabSystem::displayCategorySummary() {
     printSectionHeader("CATEGORY SUMMARY");
     int hw = 0, sw = 0, nw = 0;
-    for (const auto& inc : database) {
-        if (inc.category == HARDWARE) hw++;
-        else if (inc.category == SOFTWARE) sw++;
-        else if (inc.category == NETWORK) nw++;
+    for (const auto &inc : database) {
+        if (inc.category == HARDWARE)
+            hw++;
+        else if (inc.category == SOFTWARE)
+            sw++;
+        else if (inc.category == NETWORK)
+            nw++;
     }
     std::cout << "\n  HARDWARE  " << std::setw(5) << hw
               << "  |  SOFTWARE  " << std::setw(5) << sw
