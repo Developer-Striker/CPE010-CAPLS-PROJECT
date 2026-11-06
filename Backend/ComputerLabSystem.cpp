@@ -1,64 +1,180 @@
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+#include <filesystem>
 #include "ComputerLabSystem.h"
 
-namespace {
-void printSectionHeader(const char* title) {
-    std::cout << "\n+--------------------------------------------------------------+\n"
-              << "| " << std::left << std::setw(61) << title << "|\n"
-              << "+--------------------------------------------------------------+\n";
+namespace IncidentStorage
+{
+    const std::filesystem::path incidentsFile =
+        std::filesystem::path(__FILE__).parent_path() / "STORAGE" / "incidents.csv";
+
+    std::string escapeCsv(const std::string &value)
+    {
+        std::string escaped = "\"";
+        for (char character : value)
+        {
+            if (character == '"')
+                escaped += "\"\"";
+            else
+                escaped += character;
+        }
+        escaped += '"';
+        return escaped;
+    }
+
+    void parseCsvRow(const std::string &line, std::vector<std::string> &fields)
+    {
+        fields.clear();
+        std::string field;
+        bool inQuotes = false;
+        for (std::size_t i = 0; i < line.size(); ++i)
+        {
+            const char character = line[i];
+            if (inQuotes && character == '"' && i + 1 < line.size() && line[i + 1] == '"')
+            {
+                field += '"';
+                ++i;
+            }
+            else if (character == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (character == ',' && !inQuotes)
+            {
+                fields.push_back(field);
+                field.clear();
+            }
+            else
+            {
+                field += character;
+            }
+        }
+        fields.push_back(field);
+    }
 }
 
-void printTableHeader() {
-    std::cout << "  " << std::left
-              << std::setw(6) << "ID"
-              << std::setw(9) << "Computer"
-              << std::setw(12) << "Category"
-              << std::setw(10) << "Priority"
-              << std::setw(15) << "Status"
-              << std::setw(13) << "Date"
-              << "Description\n"
-              << "  " << std::string(90, '-') << "\n";
+namespace
+{
+    void printSectionHeader(const char *title)
+    {
+        std::cout << "\n+--------------------------------------------------------------+\n"
+                  << "| " << std::left << std::setw(61) << title << "|\n"
+                  << "+--------------------------------------------------------------+\n";
+    }
+
+    void printTableHeader()
+    {
+        std::cout << "  " << std::left
+                  << std::setw(6) << "ID"
+                  << std::setw(9) << "Computer"
+                  << std::setw(12) << "Category"
+                  << std::setw(10) << "Priority"
+                  << std::setw(15) << "Status"
+                  << std::setw(13) << "Date"
+                  << "Description\n"
+                  << "  " << std::string(90, '-') << "\n";
+    }
+
+    const char *getPriorityString(int priority)
+    {
+        if (priority == 1)
+            return "Urgent";
+        if (priority == 2)
+            return "Normal";
+        if (priority == 3)
+            return "Low";
+        return "Unknown";
+    }
 }
 
-const char* getPriorityString(int priority) {
-    if (priority == 1) return "Urgent";
-    if (priority == 2) return "Normal";
-    if (priority == 3) return "Low";
-    return "Unknown";
-}
+// Load saved incidents and continue assigning unique IDs.
+ComputerLabSystem::ComputerLabSystem()
+{
+    nextId = 1;
+    loadIncidents();
 }
 
-ComputerLabSystem::ComputerLabSystem() : nextId(1) {}
+void ComputerLabSystem::loadIncidents()
+{
+    std::filesystem::create_directories(IncidentStorage::incidentsFile.parent_path());
+    if (!std::filesystem::exists(IncidentStorage::incidentsFile))
+    {
+        std::ofstream newFile(IncidentStorage::incidentsFile);
+        newFile << "id,computer,category,priority,status,date,description\n";
+    }
 
-void ComputerLabSystem::addIncident(int compNum, Category cat, int priority, std::string date, std::string desc) {
+    std::ifstream file(IncidentStorage::incidentsFile);
+    std::string line;
+    std::vector<std::string> fields;
+    std::getline(file, line); // Skip the CSV header.
+    while (std::getline(file, line))
+    {
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        IncidentStorage::parseCsvRow(line, fields);
+        Incident incident = {
+            std::stoi(fields[0]),
+            std::stoi(fields[1]),
+            static_cast<Category>(std::stoi(fields[2])),
+            std::stoi(fields[3]),
+            static_cast<Status>(std::stoi(fields[4])),
+            fields[5],
+            fields[6]};
+        database.push_back(incident);
+        if (incident.id >= nextId)
+            nextId = incident.id + 1;
+    }
+}
+
+void ComputerLabSystem::saveIncident(const Incident &incident) const
+{
+    std::ofstream file(IncidentStorage::incidentsFile, std::ios::app);
+    file << incident.id << ','
+         << incident.compNum << ','
+         << static_cast<int>(incident.category) << ','
+         << incident.priority << ','
+         << static_cast<int>(incident.status) << ','
+         << IncidentStorage::escapeCsv(incident.date) << ','
+         << IncidentStorage::escapeCsv(incident.description) << '\n';
+}
+
+void ComputerLabSystem::addIncident(int compNum, Category cat, int priority, std::string date, std::string desc)
+{
     Incident newIncident = {nextId, compNum, cat, priority, PENDING, date, desc};
+    saveIncident(newIncident);
     ++nextId;
     database.push_back(newIncident);
     std::cout << "\n  [OK] Incident #" << newIncident.id << " added successfully.\n";
 }
 
-int ComputerLabSystem::searchIncident(int searchId) {
-    for (std::size_t i = 0; i < database.size(); i++) {
-        if (database[i].id == searchId) {
+int ComputerLabSystem::searchIncident(int searchId)
+{
+    for (std::size_t i = 0; i < database.size(); i++)
+    {
+        if (database[i].id == searchId)
+        {
             return i;
         }
     }
     return -1;
 }
 
-bool ComputerLabSystem::displayIncidentStatusOptions() {
+bool ComputerLabSystem::displayIncidentStatusOptions()
+{
     printSectionHeader("UPDATE INCIDENT STATUS");
     std::cout << "\n  " << std::left << std::setw(12) << "ID"
               << "CURRENT STATUS\n"
               << "  " << std::string(34, '-') << "\n";
 
-    if (database.empty()) {
+    if (database.empty())
+    {
         std::cout << "  No incidents are currently available.\n";
         return false;
     }
 
-    for (const auto& incident : database) {
+    for (const auto &incident : database)
+    {
         std::cout << "  " << std::left << std::setw(12) << incident.id
                   << getStatusString(incident.status) << "\n";
     }
@@ -66,20 +182,26 @@ bool ComputerLabSystem::displayIncidentStatusOptions() {
     return true;
 }
 
-void ComputerLabSystem::updateStatus(int id, Status newStatus) {
+void ComputerLabSystem::updateStatus(int id, Status newStatus)
+{
     int index = searchIncident(id);
-    if (index != -1) {
-        undoStack.push(database[index]); 
+    if (index != -1)
+    {
+        undoStack.push(database[index]);
         database[index].status = newStatus;
         std::cout << "\n  [OK] Incident #" << id << " is now " << getStatusString(newStatus) << ".\n";
-    } else {
+    }
+    else
+    {
         std::cout << "\n  [!] Incident #" << id << " was not found.\n";
     }
 }
 
-void ComputerLabSystem::undoLastUpdate() {
+void ComputerLabSystem::undoLastUpdate()
+{
     printSectionHeader("UNDO LAST UPDATE");
-    if (undoStack.empty()) {
+    if (undoStack.empty())
+    {
         std::cout << "\n  [!] There is no update to undo.\n";
         return;
     }
@@ -87,57 +209,73 @@ void ComputerLabSystem::undoLastUpdate() {
     undoStack.pop();
 
     int index = searchIncident(previousState.id);
-    if (index != -1) {
+    if (index != -1)
+    {
         database[index] = previousState;
         std::cout << "\n  [OK] Incident #" << previousState.id << " was restored to its previous status.\n";
     }
 }
 
-void ComputerLabSystem::processNextIncident() {
+void ComputerLabSystem::processNextIncident()
+{
     printSectionHeader("PROCESS NEXT URGENT INCIDENT");
-    if (database.empty()) {
+    if (database.empty())
+    {
         std::cout << "\n  No incidents are available to process.\n";
         return;
     }
 
     int highestPriorityIdx = -1;
-    for (std::size_t i = 0; i < database.size(); i++) {
-        if (database[i].status != RESOLVED) {
-            if (highestPriorityIdx == -1 || database[i].priority < database[highestPriorityIdx].priority) {
+    for (std::size_t i = 0; i < database.size(); i++)
+    {
+        if (database[i].status != RESOLVED)
+        {
+            if (highestPriorityIdx == -1 || database[i].priority < database[highestPriorityIdx].priority)
+            {
                 highestPriorityIdx = i;
             }
         }
     }
 
-    if (highestPriorityIdx != -1) {
+    if (highestPriorityIdx != -1)
+    {
         printTableHeader();
         printIncident(database[highestPriorityIdx]);
         updateStatus(database[highestPriorityIdx].id, IN_PROGRESS);
-    } else {
+    }
+    else
+    {
         std::cout << "\n  All incidents are resolved.\n";
     }
 }
 
-void ComputerLabSystem::displayComputerHistory(int compNum) {
+void ComputerLabSystem::displayComputerHistory(int compNum)
+{
     std::cout << "\n  Computer Number : " << compNum << "\n";
     printTableHeader();
     bool found = false;
-    for (const auto& inc : database) {
-        if (inc.compNum == compNum) {
+    for (const auto &inc : database)
+    {
+        if (inc.compNum == compNum)
+        {
             printIncident(inc);
             found = true;
         }
     }
-    if (!found) std::cout << "  No incidents found for this computer.\n";
+    if (!found)
+        std::cout << "  No incidents found for this computer.\n";
 }
 
-void ComputerLabSystem::displayMostProblematicComputers() {
+void ComputerLabSystem::displayMostProblematicComputers()
+{
     printSectionHeader("PROBLEMATIC COMPUTERS");
     const int MAX_COMPUTERS = 100;
     int frequencies[MAX_COMPUTERS] = {0};
 
-    for (const auto &inc : database) {
-        if (inc.compNum >= 0 && inc.compNum < MAX_COMPUTERS) {
+    for (const auto &inc : database)
+    {
+        if (inc.compNum >= 0 && inc.compNum < MAX_COMPUTERS)
+        {
             frequencies[inc.compNum]++;
         }
     }
@@ -146,8 +284,10 @@ void ComputerLabSystem::displayMostProblematicComputers() {
               << "INCIDENT COUNT\n"
               << "  " << std::string(34, '-') << "\n";
     bool found = false;
-    for (int i = 0; i < MAX_COMPUTERS; i++) {
-        if (frequencies[i] > 0) {
+    for (int i = 0; i < MAX_COMPUTERS; i++)
+    {
+        if (frequencies[i] > 0)
+        {
             std::cout << "  Computer #" << std::left << std::setw(8) << i
                       << frequencies[i] << "\n";
             found = true;
@@ -157,10 +297,12 @@ void ComputerLabSystem::displayMostProblematicComputers() {
         std::cout << "  No incident records found.\n";
 }
 
-void ComputerLabSystem::displayCategorySummary() {
+void ComputerLabSystem::displayCategorySummary()
+{
     printSectionHeader("CATEGORY SUMMARY");
     int hw = 0, sw = 0, nw = 0;
-    for (const auto &inc : database) {
+    for (const auto &inc : database)
+    {
         if (inc.category == HARDWARE)
             hw++;
         else if (inc.category == SOFTWARE)
@@ -173,14 +315,19 @@ void ComputerLabSystem::displayCategorySummary() {
               << "  |  NETWORK  " << nw << "\n";
 }
 
-void ComputerLabSystem::selectionSort(int criteria) {
-    if (database.size() < 2) {
+void ComputerLabSystem::selectionSort(int criteria)
+{
+    if (database.size() < 2)
+    {
         std::cout << "\n  [OK] Records sorted.\n";
         return;
     }
-    for (std::size_t i = 0; i < database.size() - 1; i++) {
+
+    for (std::size_t i = 0; i < database.size() - 1; i++)
+    {
         std::size_t min_idx = i;
-        for (std::size_t j = i + 1; j < database.size(); j++) {
+        for (std::size_t j = i + 1; j < database.size(); j++)
+        {
             bool shouldSwap = false;
             if (criteria == 1)
                 shouldSwap = database[j].priority < database[min_idx].priority;
@@ -214,10 +361,11 @@ void ComputerLabSystem::displayAll()
     }
 }
 
-void ComputerLabSystem::printIncident(const Incident& inc) {
+void ComputerLabSystem::printIncident(const Incident &inc)
+{
     const std::string description = inc.description.size() > 28
-        ? inc.description.substr(0, 25) + "..."
-        : inc.description;
+                                        ? inc.description.substr(0, 25) + "..."
+                                        : inc.description;
     std::cout << "  " << std::left
               << std::setw(6) << inc.id
               << std::setw(9) << inc.compNum
@@ -227,4 +375,3 @@ void ComputerLabSystem::printIncident(const Incident& inc) {
               << std::setw(13) << inc.date
               << description << "\n";
 }
-
