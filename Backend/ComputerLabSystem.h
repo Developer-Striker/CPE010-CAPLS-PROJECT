@@ -11,16 +11,20 @@ private:
     std::stack<Incident> undoStack;
     int nextId;
 
+    void loadIncidents();
+    void saveIncident(const Incident &incident) const;
+
 public:
     ComputerLabSystem(); // Constructor
 
     // Core Features
-    void addIncident(int compNum, Category cat, int priority, const std::string& date, const std::string& desc);
+    void addIncident(int compNum, Category cat, int priority, std::string date, std::string desc);
     int searchIncident(int searchId);
+    bool displayIncidentStatusOptions();
     void updateStatus(int id, Status newStatus);
     void undoLastUpdate();
     void processNextIncident();
-    
+
     // Analytics & Display Features
     void displayComputerHistory(int compNum);
     void displayMostProblematicComputers();
