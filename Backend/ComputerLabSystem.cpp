@@ -143,6 +143,7 @@ void ComputerLabSystem::displayAll() {
     }
 }
 
+
 void ComputerLabSystem::printIncident(const Incident& inc) {
     cout << "ID: " << inc.id << " | Comp: " << inc.compNum 
          << " | Cat: " << getCatString(inc.category) 
